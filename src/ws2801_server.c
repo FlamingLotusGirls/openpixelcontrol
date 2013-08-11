@@ -2,11 +2,11 @@
 #include "opc.h"
 
 #define POST_TX_DELAY_USECS 1000
-// I'm seeing flickering at speeds above ~6mhz. Although the 
+// I'm seeing flickering at speeds above ~2mhz. Although the 
 // WS2801 datasheet lists a max rate of 25mhz, anecdotal evidence 
 // from forum posts suggests that most people have had trouble 
 // obtaining that in practice.
-#define WS2801_DEFAULT_SPEED 4000000
+#define WS2801_DEFAULT_SPEED 1000000
 
 // Different WS2801 strips expect different input color orderings.
 typedef enum { RGB=0, GRB=1, BGR=2 } order_t;
