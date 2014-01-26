@@ -30,16 +30,17 @@ opc_source source = -1;
 
 // Camera parameters
 #define FOV_DEGREES 20
+#define WINDOW_WIDTH 800
 int orbiting = 0, dollying = 0;
 double start_angle, start_elevation, start_distance;
 int start_x, start_y;
 double orbit_angle = 192.0;  // camera orbit angle, degrees
 double camera_elevation = -15;  // camera elevation angle, degrees
-double camera_distance = 16.0;  // distance from origin, metres
+double camera_distance = 18.0;  // distance from origin, metres
 double camera_aspect = 1.0;  // will be updated to match window aspect ratio
 
 // Shape parameters
-#define SHAPE_THICKNESS 0.06  // thickness of points and lines, metres
+#define SHAPE_THICKNESS 0.12  // thickness of points and lines, metres
 
 // LED colours
 #define MAX_PIXELS 30000
@@ -170,6 +171,46 @@ void draw_axes() {
   glEnd();
 }
 
+float * mesh = NULL;
+int num_triangles = 0;
+
+void load_mesh_points(char* filename, int triangles) {
+  char line[255];
+  FILE* file = fopen(filename, "r");
+  printf("here");
+  if (file) {
+
+    mesh = (float*)malloc(triangles*9*sizeof(float));
+    if (mesh) {
+      num_triangles = triangles;
+      printf("%i",num_triangles);
+      float* pos = mesh;
+
+      // assumes file contains one line per triangle with 9 space-delimited floats representing the 3 3d vertices
+      while( fgets (line, 255, file) != NULL ) {
+        sscanf(line, "%f %f %f %f %f %f %f %f %f", pos, pos+1, pos+2, pos+3, pos+4, pos+5, pos+6, pos+7, pos+8);
+        pos+=9;
+      }
+    }
+
+    fclose(file);
+  }
+}
+
+void render_triangles(float* triangles, int size) {
+  if (triangles && size) {
+    glBegin(GL_TRIANGLES);
+
+    glColor3d(0.4, 0.4, 0.4);
+
+    int i;
+    for(i = 0; i<size; i+=3)
+      glVertex3fv(triangles+i);
+
+    glEnd();
+  }
+}
+
 void display() {
   int i;
   shape* sh;
@@ -180,6 +221,7 @@ void display() {
   for (i = 0, sh = shapes; i < num_shapes; i++, sh++) {
     sh->draw(sh, quad);
   }
+  render_triangles(mesh, num_triangles*9);
   gluDeleteQuadric(quad);
   glutSwapBuffers();
 }
@@ -339,15 +381,20 @@ void init(char* filename) {
 int main(int argc, char** argv) {
   u16 port;
 
+  glutInitWindowSize(WINDOW_WIDTH, WINDOW_WIDTH*0.75);
   glutInit(&argc, argv);
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s <options> <filename.json> [<port>]\n", argv[0]);
+    fprintf(stderr, "Usage: %s <options> <filename.json> [<port>] [meshfile trianglecount]\n", argv[0]);
     exit(1);
   }
   init(argv[1]);
   port = argc > 2 ? strtol(argv[2], NULL, 10) : 0;
   port = port ? port : OPC_DEFAULT_PORT;
   source = opc_new_source(port);
+
+  if (argc > 4) {
+    load_mesh_points(argv[3], strtol(argv[4], NULL, 10));
+  }
 
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutCreateWindow("OPC");
