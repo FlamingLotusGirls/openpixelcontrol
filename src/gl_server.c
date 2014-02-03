@@ -36,11 +36,11 @@ double start_angle, start_elevation, start_distance;
 int start_x, start_y;
 double orbit_angle = 192.0;  // camera orbit angle, degrees
 double camera_elevation = -15;  // camera elevation angle, degrees
-double camera_distance = 18.0;  // distance from origin, metres
+double camera_distance = 38.0;  // distance from origin, metres
 double camera_aspect = 1.0;  // will be updated to match window aspect ratio
 
 // Shape parameters
-#define SHAPE_THICKNESS 0.12  // thickness of points and lines, metres
+#define SHAPE_THICKNESS 0.18  // thickness of points and lines, metres
 
 // LED colours
 #define MAX_PIXELS 30000
@@ -171,36 +171,66 @@ void draw_axes() {
   glEnd();
 }
 
-float * mesh = NULL;
+// Mesh loaded from STL file, if any
+float * mesh = NULL; // array of triangle vertices
 int num_triangles = 0;
 
-void load_mesh_points(char* filename, int triangles) {
-  char line[255];
-  FILE* file = fopen(filename, "r");
-  printf("here");
-  if (file) {
+char* read_file(char* filename);
 
-    mesh = (float*)malloc(triangles*9*sizeof(float));
-    if (mesh) {
-      num_triangles = triangles;
-      printf("%i",num_triangles);
-      float* pos = mesh;
+void load_stl_mesh(char* filename) {
 
-      // assumes file contains one line per triangle with 9 space-delimited floats representing the 3 3d vertices
-      while( fgets (line, 255, file) != NULL ) {
-        sscanf(line, "%f %f %f %f %f %f %f %f %f", pos, pos+1, pos+2, pos+3, pos+4, pos+5, pos+6, pos+7, pos+8);
-        pos+=9;
-      }
+  // check for valid file extension
+  char* ext = strrchr(filename,'.');
+  if (!ext || (strcmp(ext+1, "stl") && strcmp(ext+1, "STL")) || strlen(ext+1) > 3) {
+    printf("Invalid filename: %s. Mesh file must be an STL file.\n", filename);
+    return;
+  }
+
+  char* data = read_file(filename);
+  if (!data) {
+    printf("Invalid filename: %s. File does not exist or can't be read.\n");
+    return;
+  }
+
+  int float_size = sizeof(float);
+  if (float_size == 4)
+  {
+    char* file_loc = data;
+
+    // STL has 80-byte header followed by uint32 telling you the # of triangles in the file
+    file_loc += 80;
+    num_triangles = *(u32*)(file_loc);
+
+    file_loc += 4; //skip triangle count
+    file_loc += 3*float_size; //skip normal of first triangle
+    
+    mesh = (float*)malloc(num_triangles*9*float_size);
+    if (!mesh) {
+      printf("Could not allocate memory for STL mesh data.\n");
+      num_triangles = 0;
+      return;
     }
+    
+    float* loc = mesh;
+    int i;
 
-    fclose(file);
+    // each STL triangle is 3 normal floats, then 9 vertex floats, then a uint16.
+    // skipping the normals for now since we don't have a lighting model that 
+    // requires them
+    for (i = 0; i < num_triangles; i++) {
+      memcpy(loc, file_loc, 9*float_size);
+      loc += 9;
+      file_loc += 12*float_size + 2;
+    }
   }
 }
 
-void render_triangles(float* triangles, int size) {
-  if (triangles && size) {
+void render_triangles(float* triangles, int size)
+{
+  if (triangles) {
     glBegin(GL_TRIANGLES);
 
+    // render everything in grey (for now)
     glColor3d(0.4, 0.4, 0.4);
 
     int i;
@@ -384,7 +414,7 @@ int main(int argc, char** argv) {
   glutInitWindowSize(WINDOW_WIDTH, WINDOW_WIDTH*0.75);
   glutInit(&argc, argv);
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s <options> <filename.json> [<port>] [meshfile trianglecount]\n", argv[0]);
+    fprintf(stderr, "Usage: %s <options> <filename.json> [<port>] [meshfile.stl]\n", argv[0]);
     exit(1);
   }
   init(argv[1]);
@@ -392,8 +422,8 @@ int main(int argc, char** argv) {
   port = port ? port : OPC_DEFAULT_PORT;
   source = opc_new_source(port);
 
-  if (argc > 4) {
-    load_mesh_points(argv[3], strtol(argv[4], NULL, 10));
+  if (argc > 3) {
+    load_stl_mesh(argv[3]);
   }
 
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
