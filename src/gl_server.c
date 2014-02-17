@@ -188,7 +188,7 @@ void load_stl_mesh(char* filename) {
 
   char* data = read_file(filename);
   if (!data) {
-    printf("Invalid filename: %s. File does not exist or can't be read.\n");
+    printf("Invalid filename: %s. File does not exist or can't be read.\n", filename);
     return;
   }
 
@@ -208,21 +208,22 @@ void load_stl_mesh(char* filename) {
     if (!mesh) {
       printf("Could not allocate memory for STL mesh data.\n");
       num_triangles = 0;
-      return;
     }
-    
-    float* loc = mesh;
-    int i;
+    else {
+      float* loc = mesh;
+      int i;
 
-    // each STL triangle is 3 normal floats, then 9 vertex floats, then a uint16.
-    // skipping the normals for now since we don't have a lighting model that 
-    // requires them
-    for (i = 0; i < num_triangles; i++) {
-      memcpy(loc, file_loc, 9*float_size);
-      loc += 9;
-      file_loc += 12*float_size + 2;
+      // each STL triangle is 3 normal floats, then 9 vertex floats, then a uint16.
+      // skipping the normals for now since we don't have a lighting model that 
+      // requires them
+      for (i = 0; i < num_triangles; i++) {
+        memcpy(loc, file_loc, 9*float_size);
+        loc += 9;
+        file_loc += 12*float_size + 2;
+      }
     }
   }
+  free(data);
 }
 
 void render_triangles(float* triangles, int size)
