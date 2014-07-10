@@ -28,6 +28,7 @@ specific language governing permissions and limitations under the License. */
 
 opc_source source = -1;
 int verbose = 0;
+int bUseJSONColor = 0; // Option set by 'jsoncolor' on command line... uses color in the JSON file rather than color from the client
 
 // Camera parameters
 #define FOV_DEGREES 20
@@ -39,6 +40,13 @@ double orbit_angle = 192.0;  // camera orbit angle, degrees
 double camera_elevation = -15;  // camera elevation angle, degrees
 double camera_distance = 38.0;  // distance from origin, metres
 double camera_aspect = 1.0;  // will be updated to match window aspect ratio
+
+// Adding panning, at least in world coordinates. This is a bit of a hack
+// from a UI perspective, but it works... Use keys x/X, y/Y, z/Z to move 
+// the world along the axis.
+double world_x = 0.0; 
+double world_y = 0.0;
+double world_z = 0.0;
 
 // Shape parameters
 #define SHAPE_THICKNESS 0.18  // thickness of points and lines, metres
@@ -111,6 +119,9 @@ vector cross(vector v, vector w) {
 typedef struct shape {
   void (*draw)(struct shape* this, GLUquadric* quad);
   int index;
+  double red;
+  double green;
+  double blue;
   union {
     vector point;
     struct { vector start, end; } line;
@@ -123,7 +134,11 @@ shape shapes[MAX_SHAPES];
 
 void draw_point(shape* this, GLUquadric* quad) {
   pixel p = pixels[this->index];
-  glColor3d(xfer[p.r].r, xfer[p.g].g, xfer[p.b].b);
+  if (bUseJSONColor) {
+    glColor3d(this->red, this->green, this->blue);
+  } else {
+    glColor3d(xfer[p.r].r, xfer[p.g].g, xfer[p.b].b);
+  }
   glPushMatrix();
   glTranslatef(this->g.point.x, this->g.point.y, this->g.point.z);
   gluSphere(quad, SHAPE_THICKNESS/2, 6, 3);
@@ -268,6 +283,7 @@ void update_camera() {
   double camera_z = sin(camera_elevation*M_PI/180)*camera_distance;
   gluLookAt(0, camera_y, camera_z, /* target */ 0, 0, 0, /* up */ 0, 0, 1);
   glRotatef(orbit_angle, 0, 0, 1);
+  glTranslatef(world_x, world_y, world_z);
   display();
 }
 
@@ -311,6 +327,20 @@ void motion(int x, int y) {
 
 void keyboard(unsigned char key, int x, int y) {
   if (key == '\x1b' || key == 'q') exit(0);
+  if (key == 'x') {
+    world_x++;
+  } else if (key =='X') {
+    world_x--;  
+  } else if (key == 'y') {
+    world_y++;
+  } else if (key == 'Y') {
+    world_y--;
+  } else if (key == 'z') {
+    world_z++;
+  } else if (key == 'Z') {
+    world_z--;
+  }
+  update_camera();
 }
 
 void handler(u8 channel, u16 count, pixel* p) {
@@ -372,17 +402,21 @@ char* read_file(char* filename) {
   return buffer;
 }
 
+
+// Read in the JSON file and ... do something to it.
 void init(char* filename) {
   char* buffer;
   cJSON* json;
   cJSON* item;
   cJSON* index;
   cJSON* point;
+  cJSON* color;
   cJSON* x;
   cJSON* line;
   cJSON* start;
   cJSON* x2;
   int i = 0;
+  int isValidShape = 0;
   
   buffer = read_file(filename);
   json = cJSON_Parse(buffer);
@@ -390,10 +424,13 @@ void init(char* filename) {
 
   num_shapes = 0;
   for (item = json->child, i = 0; item; item = item->next, i++) {
+    // Reset the index information if necessary
     index = cJSON_GetObjectItem(item, "index");
     if (index) {
+        printf("Resetting index to %d\n", index->valueint);
       i = index->valueint;
     }
+    // Extract point information, if it exists...
     point = cJSON_GetObjectItem(item, "point");
     x = point ? point->child : NULL;
     if (x && x->next && x->next->next) {
@@ -402,28 +439,57 @@ void init(char* filename) {
       shapes[num_shapes].g.point.x = x->valuedouble;
       shapes[num_shapes].g.point.y = x->next->valuedouble;
       shapes[num_shapes].g.point.z = x->next->next->valuedouble;
-      num_shapes++;
+      isValidShape = 1;
     }
-    line = cJSON_GetObjectItem(item, "line");
-    start = line ? line->child : NULL;
-    x = start ? start->child : NULL;
-    x2 = start && start->next ? start->next->child : NULL;
-    if (x && x->next && x->next->next && x2 && x2->next && x2->next->next) {
-      shapes[num_shapes].draw = draw_line;
-      shapes[num_shapes].index = i;
-      shapes[num_shapes].g.line.start.x = x->valuedouble;
-      shapes[num_shapes].g.line.start.y = x->next->valuedouble;
-      shapes[num_shapes].g.line.start.z = x->next->next->valuedouble;
-      shapes[num_shapes].g.line.end.x = x2->valuedouble;
-      shapes[num_shapes].g.line.end.y = x2->next->valuedouble;
-      shapes[num_shapes].g.line.end.z = x2->next->next->valuedouble;
-      num_shapes++;
+
+    // Extract line information, if we haven't already figured out what kind of shape
+    // this is (a shape can be a point or a line, but not both)
+    if (!isValidShape) {
+        line = cJSON_GetObjectItem(item, "line");
+        start = line ? line->child : NULL;
+        x = start ? start->child : NULL;
+        x2 = start && start->next ? start->next->child : NULL;
+        if (x && x->next && x->next->next && x2 && x2->next && x2->next->next) {
+          shapes[num_shapes].draw = draw_line;
+          shapes[num_shapes].index = i;
+          shapes[num_shapes].g.line.start.x = x->valuedouble;
+          shapes[num_shapes].g.line.start.y = x->next->valuedouble;
+          shapes[num_shapes].g.line.start.z = x->next->next->valuedouble;
+          shapes[num_shapes].g.line.end.x = x2->valuedouble;
+          shapes[num_shapes].g.line.end.y = x2->next->valuedouble;
+          shapes[num_shapes].g.line.end.z = x2->next->next->valuedouble;
+        }
+    }
+
+    // If we have a valid shape, extract color information and update index
+    // into shape table.
+    if (isValidShape) {
+        color = cJSON_GetObjectItem(item, "color");
+        x = color ? color->child : NULL;
+        if (x && x->next &&  x->next->next) {
+            shapes[num_shapes].red = x->valuedouble;
+            shapes[num_shapes].green = x->next->valuedouble;
+            shapes[num_shapes].blue = x->next->next->valuedouble;
+        } else {
+            shapes[num_shapes].red = 1.0;
+            shapes[num_shapes].green = 1.0;
+            shapes[num_shapes].blue = 1.0;
+        }
+        num_shapes++;
     }
   }
+  
+  // nb - the following clause does nothing, and we're relying
+  // on the compiler to initialize the pixels array.
+  // This is probably a bad idea....
   num_pixels = i;
   for (i = 0; i < num_pixels; i++) {
     pixels[i].r = pixels[i].g = pixels[i].b = 1;
   }
+  
+  // Initialize the channel transformation vectors. The pixel information
+  // comes to us as a value between 0 and 255, and we need to transform 
+  // that to something between 0 and 1.0f
   for (i = 0; i < 256; i++) {
     xfer[i].r = xfer[i].g = xfer[i].b = 0.1 + i*0.9/256;
   }
@@ -435,7 +501,7 @@ int main(int argc, char** argv) {
   glutInitWindowSize(WINDOW_WIDTH, WINDOW_WIDTH*0.75);
   glutInit(&argc, argv);
   if (argc < 2) {
-    fprintf(stderr, "Usage: %s <options> <filename.json> [<port>] [meshfile.stl]\n", argv[0]);
+    fprintf(stderr, "Usage: %s <gl-options> <filename.json> [<port>] [meshfile.stl]\n", argv[0]);
     exit(1);
   }
   init(argv[1]);
@@ -446,6 +512,14 @@ int main(int argc, char** argv) {
   if (argc > 3) {
     load_stl_mesh(argv[3]);
   }
+  
+  // currently undocumented option to take shape color values from the initial json file.
+  // Handy for some types of debugging.
+  if (argc > 4){
+    if (!strcasecmp("jsoncolor", argv[4])) {
+        bUseJSONColor = 1;
+    }
+  } 
 
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutCreateWindow("OPC");
