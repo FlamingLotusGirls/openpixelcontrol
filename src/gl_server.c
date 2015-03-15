@@ -260,6 +260,7 @@ void render_triangles(float* triangles, int size)
   if (triangles) {
     glBegin(GL_TRIANGLES);
 
+    glLineWidth(0.25);
     // render everything in grey (for now)
     glColor3d(0.4, 0.4, 0.4);
 
