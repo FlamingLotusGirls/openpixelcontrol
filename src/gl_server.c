@@ -41,9 +41,9 @@ double camera_elevation = -15;  // camera elevation angle, degrees
 double camera_distance = 38.0;  // distance from origin, metres
 double camera_aspect = 1.0;  // will be updated to match window aspect ratio
 
-// Adding panning, at least in world coordinates. This is a bit of a hack
-// from a UI perspective, but it works... Use keys x/X, y/Y, z/Z to move 
-// the world along the axis.
+// Add panning, at least in world coordinates. This is a bit of a hack from a
+// UI perspective, but it works.  Arrow keys pan along the X and Y axis, PageUp
+// and PageDown pan along the Z axis.
 double world_x = 0.0; 
 double world_y = 0.0;
 double world_z = 0.0;
@@ -326,21 +326,31 @@ void motion(int x, int y) {
 }
 
 void keyboard(unsigned char key, int x, int y) {
-  if (key == '\x1b' || key == 'q') exit(0);
-  if (key == 'x') {
-    world_x++;
-  } else if (key =='X') {
-    world_x--;  
-  } else if (key == 'y') {
-    world_y++;
-  } else if (key == 'Y') {
-    world_y--;
-  } else if (key == 'z') {
-    world_z++;
-  } else if (key == 'Z') {
-    world_z--;
+  switch(key) {
+    case 'q':
+    case '\x1b':
+      exit(0);
+
+    case 'x':  world_x++;  break;
+    case 'X':  world_x--;  break;
+    case 'y':  world_y++;  break;
+    case 'Y':  world_y--;  break;
+    case 'z':  world_z++;  break;
+    case 'Z':  world_z--;  break;
   }
+
   update_camera();
+}
+
+void special_keyboard(int key, int x, int y) {
+  switch (key) {
+    case GLUT_KEY_UP:         keyboard('x', 0, 0);  break;
+    case GLUT_KEY_DOWN:       keyboard('X', 0, 0);  break;
+    case GLUT_KEY_RIGHT:      keyboard('y', 0, 0);  break;
+    case GLUT_KEY_LEFT:       keyboard('Y', 0, 0);  break;
+    case GLUT_KEY_PAGE_UP:    keyboard('z', 0, 0);  break;
+    case GLUT_KEY_PAGE_DOWN:  keyboard('Z', 0, 0);  break;
+  }
 }
 
 void handler(u8 channel, u16 count, pixel* p) {
@@ -528,7 +538,8 @@ int main(int argc, char** argv) {
   glutMouseFunc(mouse);
   glutMotionFunc(motion);
   glutIgnoreKeyRepeat(1);
-  glutKeyboardFunc(keyboard);
+  glutKeyboardFunc(keyboard);        // https://www.opengl.org/documentation/specs/glut/spec3/node49.html
+  glutSpecialFunc(special_keyboard); // https://www.opengl.org/resources/libraries/glut/spec3/node54.html
   glutIdleFunc(idle);
 
   glEnable(GL_DEPTH_TEST);
