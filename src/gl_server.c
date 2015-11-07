@@ -14,6 +14,12 @@ specific language governing permissions and limitations under the License. */
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <time.h>
+#include <unistd.h>
+
 #ifdef __APPLE__
 #include <OpenGL/CGLCurrent.h>
 #include <OpenGL/CGLTypes.h>
@@ -70,6 +76,13 @@ colour xfer[256];
 typedef struct {
   double x, y, z;
 } vector;
+
+// Soma's button state.  See the press() function, below.
+double button_timeout[2];
+char *button_filename[2] = {
+  "/var/run/soma/buttonA",
+  "/var/run/soma/buttonB",
+};
 
 vector tmp_vector;
 #define put_vertex(v) ((tmp_vector = v), glVertex3dv(&(tmp_vector.x)))
@@ -325,6 +338,41 @@ void motion(int x, int y) {
   }
 }
 
+/*
+ * Returns unix time as a floating point number
+ */
+double now(void) {
+  struct timeval tv;
+
+  memset(&tv, 0, sizeof(tv));
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec + tv.tv_usec/1000000.0;
+}
+
+/*
+ * Very specific to FLG's Soma sculpture.  If "0" is pressed, simulate pressing
+ * the left button, and "1" for the right.  This only works if "/var/run/soma"
+ * writable.
+ */
+void press(int num) {
+  int fd;
+
+  fd = creat(button_filename[num], 0666);
+
+  if (fd < 0) {
+    printf("Failed to touch %s. Is directory writable?\n", button_filename[num]);
+  }
+
+  else {
+    if (button_timeout[num] == 0) {
+      printf("Pressing  %s\n", button_filename[num]);
+    }
+    button_timeout[num] = now() + 0.25;
+  }
+
+  close(fd);
+}
+
 void keyboard(unsigned char key, int x, int y) {
   switch(key) {
     case 'q':
@@ -337,6 +385,9 @@ void keyboard(unsigned char key, int x, int y) {
     case 'Y':  world_y--;  break;
     case 'z':  world_z++;  break;
     case 'Z':  world_z--;  break;
+
+    case '0':  press(0);  break;
+    case '1':  press(1);  break;
   }
 
   update_camera();
@@ -355,6 +406,14 @@ void special_keyboard(int key, int x, int y) {
 
 void handler(u8 channel, u16 count, pixel* p) {
   int i = 0;
+
+  for (i = 0; i < 2; i++) {
+    if (button_timeout[i] && button_timeout[i] < now()) {
+      printf("Releasing %s\n\n", button_filename[i]);
+      unlink(button_filename[i]);
+      button_timeout[i] = 0;
+    }
+  }
 
   if (verbose) {
     char* sep = " =";
@@ -507,6 +566,7 @@ void init(char* filename) {
 
 int main(int argc, char** argv) {
   u16 port;
+  int i;
 
   glutInitWindowSize(WINDOW_WIDTH, WINDOW_WIDTH*0.75);
   glutInit(&argc, argv);
@@ -514,6 +574,12 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Usage: %s <gl-options> <filename.json> [<port>] [meshfile.stl]\n", argv[0]);
     exit(1);
   }
+
+  // Start with the buttons unpressed
+  for (i = 0; i < 2; i++) {
+    unlink(button_filename[i]);
+  }
+
   init(argv[1]);
   port = argc > 2 ? strtol(argv[2], NULL, 10) : 0;
   port = port ? port : OPC_DEFAULT_PORT;
@@ -553,3 +619,5 @@ int main(int argc, char** argv) {
   glutMainLoop();
   return 0;
 }
+
+// vim:set ts=2 sw=2 ai et:
