@@ -411,8 +411,38 @@ void special_keyboard(int key, int x, int y) {
   }
 }
 
+/*
+ * time(2) with microseconds, as a floating point double
+ */
+double timef(void)
+{
+  struct timeval tv;
+  double t;
+
+  memset(&tv, 0, sizeof(tv));
+  gettimeofday(&tv, NULL);
+  t = tv.tv_sec + tv.tv_usec/1000000.0;
+  return t;
+}
+
 void handler(u8 channel, u16 count, pixel* p) {
+  static double last_print;
+  static int frames;
+  double elapsed;
   int i = 0;
+
+  if (! last_print)
+    last_print = timef();
+
+  elapsed = timef() - last_print;
+
+  if (elapsed > 1) {
+    printf("%.1f frames/second\n", frames/elapsed);
+    last_print = timef();
+    frames = 0;
+  }
+
+  frames++;
 
   for (i = 0; i < 2; i++) {
     if (button_timeout[i] && button_timeout[i] < now()) {
