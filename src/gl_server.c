@@ -80,8 +80,8 @@ typedef struct {
 // Soma's button state.  See the press() function, below.
 double button_timeout[2];
 char *button_filename[2] = {
-  "/var/run/soma/buttonA",
-  "/var/run/soma/buttonB",
+  "/tmp/buttonA",
+  "/tmp/buttonB",
 };
 
 vector tmp_vector;
@@ -386,8 +386,15 @@ void keyboard(unsigned char key, int x, int y) {
     case 'z':  world_z++;  break;
     case 'Z':  world_z--;  break;
 
-    case '0':  press(0);  break;
-    case '1':  press(1);  break;
+    case '1':
+    case 'a':
+    case 'l':
+      press(0);  break;
+
+    case '0':
+    case 'b':
+    case 'r':
+      press(1);  break;
   }
 
   update_camera();
