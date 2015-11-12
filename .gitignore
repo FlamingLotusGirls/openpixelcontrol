@@ -27,3 +27,6 @@ bin/
 # Kate temporary files
 *~
 *.kate-swp
+
+# ctags
+tags

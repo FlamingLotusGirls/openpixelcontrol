@@ -402,10 +402,10 @@ void keyboard(unsigned char key, int x, int y) {
 
 void special_keyboard(int key, int x, int y) {
   switch (key) {
-    case GLUT_KEY_UP:         keyboard('x', 0, 0);  break;
-    case GLUT_KEY_DOWN:       keyboard('X', 0, 0);  break;
-    case GLUT_KEY_RIGHT:      keyboard('y', 0, 0);  break;
-    case GLUT_KEY_LEFT:       keyboard('Y', 0, 0);  break;
+    case GLUT_KEY_UP:         keyboard('y', 0, 0);  break;
+    case GLUT_KEY_DOWN:       keyboard('Y', 0, 0);  break;
+    case GLUT_KEY_RIGHT:      keyboard('x', 0, 0);  break;
+    case GLUT_KEY_LEFT:       keyboard('X', 0, 0);  break;
     case GLUT_KEY_PAGE_UP:    keyboard('z', 0, 0);  break;
     case GLUT_KEY_PAGE_DOWN:  keyboard('Z', 0, 0);  break;
   }
