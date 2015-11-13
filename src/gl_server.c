@@ -402,17 +402,47 @@ void keyboard(unsigned char key, int x, int y) {
 
 void special_keyboard(int key, int x, int y) {
   switch (key) {
-    case GLUT_KEY_UP:         keyboard('x', 0, 0);  break;
-    case GLUT_KEY_DOWN:       keyboard('X', 0, 0);  break;
-    case GLUT_KEY_RIGHT:      keyboard('y', 0, 0);  break;
-    case GLUT_KEY_LEFT:       keyboard('Y', 0, 0);  break;
+    case GLUT_KEY_UP:         keyboard('y', 0, 0);  break;
+    case GLUT_KEY_DOWN:       keyboard('Y', 0, 0);  break;
+    case GLUT_KEY_RIGHT:      keyboard('x', 0, 0);  break;
+    case GLUT_KEY_LEFT:       keyboard('X', 0, 0);  break;
     case GLUT_KEY_PAGE_UP:    keyboard('z', 0, 0);  break;
     case GLUT_KEY_PAGE_DOWN:  keyboard('Z', 0, 0);  break;
   }
 }
 
+/*
+ * time(2) with microseconds, as a floating point double
+ */
+double timef(void)
+{
+  struct timeval tv;
+  double t;
+
+  memset(&tv, 0, sizeof(tv));
+  gettimeofday(&tv, NULL);
+  t = tv.tv_sec + tv.tv_usec/1000000.0;
+  return t;
+}
+
 void handler(u8 channel, u16 count, pixel* p) {
+  static double last_print;
+  static int frames;
+  double elapsed;
   int i = 0;
+
+  if (! last_print)
+    last_print = timef();
+
+  elapsed = timef() - last_print;
+
+  if (elapsed > 1) {
+    printf("%.1f frames/second\n", frames/elapsed);
+    last_print = timef();
+    frames = 0;
+  }
+
+  frames++;
 
   for (i = 0; i < 2; i++) {
     if (button_timeout[i] && button_timeout[i] < now()) {
