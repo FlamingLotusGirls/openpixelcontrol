@@ -16,6 +16,7 @@ specific language governing permissions and limitations under the License. */
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <fcntl.h>
 #include <time.h>
 #include <unistd.h>
