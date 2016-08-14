@@ -256,10 +256,15 @@ void load_stl_mesh(char* filename) {
   free(data);
 }
 
+int wireframe = 0;
 void render_triangles(float* triangles, int size)
 {
   if (triangles) {
-    glBegin(GL_TRIANGLES);
+    if (wireframe) {
+      glBegin(GL_LINES);
+    } else {
+      glBegin(GL_TRIANGLES);
+    }
 
     glLineWidth(0.25);
     // render everything in grey (for now)
@@ -397,6 +402,9 @@ void keyboard(unsigned char key, int x, int y) {
     case 'b':
     case 'r':
       press(1);  break;
+    case 'm':
+      wireframe = wireframe == 0 ? 1 : 0;
+      break;
   }
 
   update_camera();
