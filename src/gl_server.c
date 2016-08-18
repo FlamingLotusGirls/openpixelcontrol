@@ -57,6 +57,7 @@ double world_z = 0.0;
 
 // Shape parameters
 #define SHAPE_THICKNESS 0.18  // thickness of points and lines, metres
+#define POINT_THICKNESS 3.0 // should probably be configurable via points.json
 
 // LED colours
 #define MAX_PIXELS 30000
@@ -155,7 +156,7 @@ void draw_point(shape* this, GLUquadric* quad) {
   }
   glPushMatrix();
   glTranslatef(this->g.point.x, this->g.point.y, this->g.point.z);
-  gluSphere(quad, SHAPE_THICKNESS/2, 6, 3);
+  gluSphere(quad, POINT_THICKNESS/2, 6, 3);
   glPopMatrix();
 }
 
@@ -256,11 +257,11 @@ void load_stl_mesh(char* filename) {
   free(data);
 }
 
-int wireframe = 0;
+int bWireframe = 0;
 void render_triangles(float* triangles, int size)
 {
   if (triangles) {
-    if (wireframe) {
+    if (bWireframe) {
       glBegin(GL_LINES);
     } else {
       glBegin(GL_TRIANGLES);
@@ -403,8 +404,10 @@ void keyboard(unsigned char key, int x, int y) {
     case 'r':
       press(1);  break;
     case 'm':
-      wireframe = wireframe == 0 ? 1 : 0;
+      bWireframe = bWireframe == 0 ? 1 : 0;
       break;
+    case 'j':
+      bUseJSONColor = bUseJSONColor == 0 ? 1 : 0;
   }
 
   update_camera();
