@@ -14,3 +14,17 @@ about using OPC to develop patterns for Soma, please see
 [soma]:        http://flaminglotus.com/art/soma/
 [pier14]:      http://flaminglotus.com/soma-on-pier-14/
 [opc-client]:  https://github.com/FlamingLotusGirls/soma/tree/master/pier14/opc-client
+
+## Set initial camera position
+
+It can be really annoying to move and pan around every time you run the simulator
+
+1. run with verbose flag `bin/gl_server ... --verbose`
+
+  prints `x y z elv dst asp ang: 0.00 -49.00 0.00 66.00 302.40 1.33 1078.00` each time you move the camera
+
+2. pass values in the next run
+
+  `bin/gl_server ... --initcam='0.00 -49.00 0.00 66.00 302.40 1.33 1078.00'
+
+3. scene will load wherever you left off. happiness.

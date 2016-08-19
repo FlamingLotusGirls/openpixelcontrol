@@ -306,6 +306,9 @@ void update_camera() {
   glRotatef(orbit_angle, 0, 0, 1);
   glTranslatef(world_x, world_y, world_z);
   display();
+  if (verbose) {
+    printf("x y z elv dst asp ang: %.2f %.2f %.2f %.2f %.2f %.2f %.2f\n", world_x, world_y, world_z, camera_elevation, camera_distance, camera_aspect, orbit_angle);
+  }
 }
 
 void reshape(int width, int height) {
@@ -639,13 +642,35 @@ int main(int argc, char** argv) {
     load_stl_mesh(argv[3]);
   }
   
-  // currently undocumented option to take shape color values from the initial json file.
-  // Handy for some types of debugging.
-  if (argc > 4){
-    if (!strcasecmp("jsoncolor", argv[4])) {
+  if (argc > 4) {
+    for (char **a = argv; a != argv + argc; a++) {
+      if (strcasecmp("--jsoncolor", *a) == 0) {
+        // currently undocumented option to take shape color values from the initial json file.
+        // Handy for some types of debugging.
         bUseJSONColor = 1;
+      } else if (strcasecmp("--verbose", *a) == 0) {
+        verbose = 1;
+      } else if (strstr(*a, "--initcam=") != NULL) {
+        // flag sets initial camera so you don't have to pan/scroll each run
+        // i.e. --initcam='0.00 -49.00 0.00 89.0 302.4 1 1080.00'
+        int flaglen = 10; // length of flag we have to remove from the string (--initcam=)
+        size_t len = strlen(*a) - flaglen;
+        char vals[len];
+        // copy flag value only
+        strncpy(vals, *a + flaglen, len);
+
+        // iterate each number and set corresponding camera value
+        char *tok = vals, *end = vals;
+        double *initcam[7] = { &world_x, &world_y, &world_z, &camera_elevation, &camera_distance, &camera_aspect, &orbit_angle };
+        int i = 0;
+        while (tok != NULL) {
+          strsep(&end, " "); // delimited by single space
+          *initcam[i++] = atof(tok);
+          tok = end;
+        }
+      }
     }
-  } 
+  }
 
   glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
   glutCreateWindow("OPC");
